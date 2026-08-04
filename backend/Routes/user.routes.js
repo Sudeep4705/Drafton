@@ -30,7 +30,6 @@ router.post("/register",validate(registerValidate),async(req,res)=>{
         httpOnly:true,
         secure:false,
         sameSite:"lax"
-
     })
     res.json(userdata)
     }catch(error){
@@ -54,11 +53,10 @@ router.post("/login",validate(loginValidate),async(req,res)=>{
               return res.status(401).json("Email or Password in invalid")
         }
             const token =   jwt.sign({id:userdata.id},process.env.JWT_SECRET,{expiresIn:"5h"})
-    res.cookie("token",token,{
+        res.cookie("token",token,{
         httpOnly:true,
         secure:false,
         sameSite:"lax"
-
     })
         return res.status(200).json("login successfully")
     }

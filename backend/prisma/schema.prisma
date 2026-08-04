@@ -20,6 +20,7 @@ model User{
   email  String @unique
   password String 
   template Template[]
+  recipient Recipient[]
 }
 
 
@@ -31,5 +32,14 @@ model Template{
   templateContent String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId],references: [id])
+}
+
+model Recipient{
+  id Int @id @default(autoincrement())
+  name String
+  companyName String @unique
+  email String 
+  userId Int
   user User @relation(fields: [userId],references: [id])
 }
