@@ -27,6 +27,7 @@ router.post("/", userVerify, async (req, res) => {
   }
 });
 
+
 router.get("/", userVerify, async (req, res) => {
   try {
     const id = req.user.id;

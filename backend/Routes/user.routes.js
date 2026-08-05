@@ -52,7 +52,7 @@ router.post("/login",validate(loginValidate),async(req,res)=>{
         if(!checkpassword){
               return res.status(401).json("Email or Password in invalid")
         }
-            const token =   jwt.sign({id:userdata.id},process.env.JWT_SECRET,{expiresIn:"5h"})
+            const token =   jwt.sign({id:checkemail.id},process.env.JWT_SECRET,{expiresIn:"5h"})
         res.cookie("token",token,{
         httpOnly:true,
         secure:false,
@@ -61,6 +61,7 @@ router.post("/login",validate(loginValidate),async(req,res)=>{
         return res.status(200).json("login successfully")
     }
     catch(error){
+        console.log(error);
          return res.status(400).json(error)
     }
 })

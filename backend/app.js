@@ -4,6 +4,7 @@ import dotenv from "dotenv"
 import cookieParser from "cookie-parser";
 import UserRoute from "./Routes/user.routes.js"
 import TemplateRoute from "./Routes/template.routes.js"
+import RecipientRoute from "./Routes/recipient.routes.js"
 dotenv.config()
 const app = express();
 
@@ -17,6 +18,7 @@ app.use(cookieParser())
 // routes
 app.use("/user",UserRoute)
 app.use("/template",TemplateRoute)
+app.use("/recipient",RecipientRoute)
 
 
 // server

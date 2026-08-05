@@ -11,6 +11,7 @@ const verifyUser = (req,res,next)=>{
     next()
     }
     catch(error){
+        console.log(error);
         return res.status(400).json("something wrong")
     }
 
