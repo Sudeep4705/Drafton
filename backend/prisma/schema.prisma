@@ -38,8 +38,10 @@ model Template{
 model Recipient{
   id Int @id @default(autoincrement())
   name String
-  companyName String @unique
+  companyName String 
   email String 
   userId Int
   user User @relation(fields: [userId],references: [id])
+
+  @@unique([email,userId])
 }

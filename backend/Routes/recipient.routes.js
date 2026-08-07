@@ -2,7 +2,7 @@ import express from "express";
 import { Prisma, PrismaClient } from "@prisma/client";
 import verifyUser from "../Middleware/verifyuser.middleware.js";
 import upload from "../Middleware/uploads.middleware.js";
-
+import xlsx from "xlsx";
 const router = express.Router();
 const prisma = new PrismaClient();
 
@@ -148,19 +148,44 @@ router.delete("/:id", verifyUser, async (req, res) => {
         id,
       },
     });
-    return res
-      .status(200)
-      .json({
-        message: "Recipient deleted successfully",
-        data: deletedRecipient,
-      });
+    return res.status(200).json({
+      message: "Recipient deleted successfully",
+      data: deletedRecipient,
+    });
   } catch (error) {
     return res.status(500).json({ message: "Intenal server error" });
   }
 });
 
-router.post("/upload", upload.single("file"), async (req, res) => {
-  console.log("server");
+router.post("/upload",verifyUser, upload.single("file"), async (req, res) => {
+  try{
+      const userid = req.user.id
+  if(!req.file){
+    return res.status(400).json({message:"Please upload an excel file"})
+  }
+  const workbook = xlsx.read(req.file.buffer);
+  const sheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[sheetName]
+  const jsonSheets = xlsx.utils.sheet_to_json(worksheet);
+  const newRecipient = jsonSheets.map((recipient)=>{
+  const newobj = {name:recipient.Name,
+    companyName:recipient["Company Name"],
+    email:recipient["Email Address"],
+    userid:userid
+  }
+   return newobj
+  })
+  const allRecipient = await prisma.recipient.createMany({
+    data:newRecipient,
+    skipDuplicates:true
+  })
+  
+  res.json({ message: "Recipient imported successfully",count:allRecipient.count});
+  }
+  catch(error){
+    return res.status(500).json({ message: "Intenal server error" });
+  }
+
 });
 
 export default router;
