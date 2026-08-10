@@ -35,11 +35,18 @@ model Template{
   user User @relation(fields: [userId],references: [id])
 }
 
+enum RecipientStatus{
+  PENDING
+  SENT
+  FAILED
+}
+
 model Recipient{
   id Int @id @default(autoincrement())
   name String
   companyName String 
   email String 
+  status RecipientStatus @default(PENDING)
   userId Int
   user User @relation(fields: [userId],references: [id])
 
