@@ -6,6 +6,7 @@ import UserRoute from "./Routes/user.routes.js"
 import TemplateRoute from "./Routes/template.routes.js"
 import RecipientRoute from "./Routes/recipient.routes.js"
 import EmailGenerateRoute from "./Routes/emailgenerate.routes.js"
+import OauthRoute from "./Routes/Oauth.routes.js"
 dotenv.config()
 const app = express();
 
@@ -17,6 +18,7 @@ app.use(cors({origin:"http://localhost:5173",credentials:true}))
 app.use(cookieParser())
 
 // routes
+app.use("/auth",OauthRoute)
 app.use("/user",UserRoute)
 app.use("/template",TemplateRoute)
 app.use("/recipient",RecipientRoute)
