@@ -29,14 +29,14 @@ router.get("/google/callback",async (req, res) => {
       auth:OauthClient
     })
     const aiEmail ="Hi im goat, I noticed your company and wanted to reach out"
-    const rawEmail = `To:${usercheck.email}
-    
-
-    Body:${aiEmail}
+    const rawEmail = `To:${"recipentemail"}
+    ${aiEmail}
     `
     return res.json({message:"Google Oauth Successfull "})
   } catch (error) {
     return res.status(500).json({ message: "intenal server error" });
   }
 });
+
+
 export default router;
