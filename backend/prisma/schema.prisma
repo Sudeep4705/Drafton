@@ -19,6 +19,8 @@ model User{
   name  String @unique
   email  String @unique
   password String 
+  googleAccessToken String?
+  googleRefreshToken  String?
   template Template[]
   recipient Recipient[]
 }

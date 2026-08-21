@@ -3,6 +3,8 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import verifyUser from "../Middleware/verifyuser.middleware.js";
 import { generateEmail } from "../Utils/llm.js";
 import { gmailservice } from "./Oauth.routes.js";
+import { google } from "googleapis";
+import OauthClient from "../Utils/googleOauth.js";
 const router = express.Router();
 const prisma = new PrismaClient();
 router.post("/generate", verifyUser, async (req, res) => {
@@ -62,6 +64,8 @@ Output only the email.
 });
 
 
+
+
 router.post("/send/:id",verifyUser,async (req, res) => {
   try {
     const id =  req.user.id
@@ -87,6 +91,27 @@ const recipients = await prisma.recipient.findMany({
 if(recipients.length===0){
     return res.status(404).json({message:"Recipient not found"})
 }
+
+const user= await prisma.user.findFirst({
+  where:{
+    id:id
+  }
+})
+if(!user){
+  return res.status(404).json({message:"User not found"})
+}
+const access_token = user.googleAccessToken
+const refresh_token =user.googleRefreshToken
+
+if(!access_token || !refresh_token){
+  return res.status(400).json({message:"Please connect the email first"})
+}
+
+OauthClient.setCredentials({
+  access_token:access_token,
+  refresh_token:refresh_token
+})
+
 console.log(recipients[0]);
 const aiEmail = IstemplateUser.templateContent
 const rawEmail = `To: ${recipients[0].email}
