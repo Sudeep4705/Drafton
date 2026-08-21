@@ -2,6 +2,7 @@ import express from "express";
 import { Prisma, PrismaClient } from "@prisma/client";
 import verifyUser from "../Middleware/verifyuser.middleware.js";
 import { generateEmail } from "../Utils/llm.js";
+import { gmailservice } from "./Oauth.routes.js";
 const router = express.Router();
 const prisma = new PrismaClient();
 router.post("/generate", verifyUser, async (req, res) => {
@@ -60,6 +61,7 @@ Output only the email.
   }
 });
 
+
 router.post("/send/:id",verifyUser,async (req, res) => {
   try {
     const id =  req.user.id
@@ -93,9 +95,12 @@ ${aiEmail}
 console.log(rawEmail);
 const encodedEmail = Buffer.from(rawEmail).toString("base64url")
 console.log(encodedEmail);
-
+const data = await gmailservice(encodedEmail)
+console.log(data);
 return res.status(200).json({template:IstemplateUser})
   } catch (error){
+    console.log(error);
+    
     res.status(500).json({ message: "Internal server error" });
   }
 });
