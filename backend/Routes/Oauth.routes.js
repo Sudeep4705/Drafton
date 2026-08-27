@@ -14,37 +14,27 @@ router.get("/google", async (req, res) => {
       access_type: "offline",
       scope: ["https://www.googleapis.com/auth/gmail.send"],
       state: statecode,
+      prompt:"consent"
     });
+    
     console.log(authUrl);
     res.redirect(authUrl);
-  } catch (error) {
+  } catch (error){
     return res.status(500).json({ message: "intenal server error" });
   }
 });
-export async function gmailservice(encodedEmail) {
-  // creating the gmail api service and providing the version and ouathclient bcz i holds the accesstoken and refreshtoken
-  const gmail = google.gmail({
-    version: "v1",
-    auth: OauthClient,
-  });
-  const response = await gmail.users.messages.send({
-    userId: "me",
-    requestBody: {
-      raw: encodedEmail,
-    },
-  });
-  return response;
-}
+
 
 router.get("/google/callback", verifyUser, async (req, res) => {
   try {
     const userId = req.user.id;
     console.log("user",userId); 
-    
     const { code, state } = req.query;
     if (state !== statecode) {
       return res.status(403).json({ message: "Forbidden" });
     }
+    console.log(state);
+    
     const { tokens } = await OauthClient.getToken(code);
     await prisma.user.update({
       where: {

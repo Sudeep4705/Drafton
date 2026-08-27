@@ -1,16 +1,15 @@
 import express from "express";
 import { Prisma, PrismaClient } from "@prisma/client";
 import verifyUser from "../Middleware/verifyuser.middleware.js";
-import { generateEmail } from "../Utils/llm.js";
-import { gmailservice } from "./Oauth.routes.js";
 import { google } from "googleapis";
+import { generateEmail } from "../Utils/llm.js";
 import OauthClient from "../Utils/googleOauth.js";
 const router = express.Router();
 const prisma = new PrismaClient();
 router.post("/generate", verifyUser, async (req, res) => {
   try {
     const userid = req.user.id;
-    const { templateId} = req.body;
+    const { templateId } = req.body;
     if (!templateId) {
       return res.status(400).json({ message: "invalid data" });
     }
@@ -19,7 +18,7 @@ router.post("/generate", verifyUser, async (req, res) => {
         id: templateId,
       },
     });
-    if (!IstemplateUser){
+    if (!IstemplateUser) {
       return res.status(404).json({ message: "template not found" });
     }
     if (IstemplateUser.userId !== userid) {
@@ -31,10 +30,10 @@ router.post("/generate", verifyUser, async (req, res) => {
       },
     });
     console.log(IsrecipinetUser);
-    if (IsrecipinetUser.length===0) {
+    if (IsrecipinetUser.length === 0) {
       return res.status(404).json({ message: "recipinet not found" });
     }
-    const Recipient = IsrecipinetUser[0]
+    const Recipient = IsrecipinetUser[0];
     const prompt = `
 You are an assistant that writes personalized professional cold emails.
 Recipient name: ${Recipient.name}
@@ -63,69 +62,94 @@ Output only the email.
   }
 });
 
+const oauthClient =  new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI
+)
 
 
-
-router.post("/send/:id",verifyUser,async (req, res) => {
+router.post("/send/:id", verifyUser, async (req, res) => {
   try {
-    const id =  req.user.id
-    const ApprovedTemplate =Number(req.params.id);
-    if(!ApprovedTemplate){
-            return res.status(404).json({message:"Template Not found"})
+    console.log("im at send email");
+    
+    const id = req.user.id;
+    const ApprovedTemplate = Number(req.params.id);
+    if (!ApprovedTemplate) {
+      return res.status(404).json({ message: "Template Not found" });
     }
     const IstemplateUser = await prisma.template.findFirst({
-        where:{
-            userId:id,
-            id:ApprovedTemplate
-        }
-    })
-    if(!IstemplateUser){
-        return res.status(403).json({message:"Unauthorised access"})
+      where: {
+        userId: id,
+        id: ApprovedTemplate,
+      },
+    });
+    if (!IstemplateUser) {
+      return res.status(403).json({ message: "Unauthorised access" });
     }
-const recipients = await prisma.recipient.findMany({
-    where:{
-        status:"PENDING",
-        userId:id
+    const recipients = await prisma.recipient.findMany({
+      where: {
+        status: "PENDING",
+        userId: id,
+      },
+    });
+    if (recipients.length === 0) {
+      return res.status(404).json({ message: "Recipient not found" });
     }
-})
-if(recipients.length===0){
-    return res.status(404).json({message:"Recipient not found"})
-}
+    const user = await prisma.user.findUnique({
+      where: {
+        id: id,
+      },
+    });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const access_token = user.googleAccessToken;
+    const refresh_token = user.googleRefreshToken;
 
-const user= await prisma.user.findFirst({
+    if (!access_token || !refresh_token) {
+      return res
+        .status(400)
+        .json({ message: "Please connect the email first" });
+    }
+
+    oauthClient.setCredentials({
+      access_token: access_token,
+      refresh_token: refresh_token,
+    });
+
+    console.log(recipients[0]);
+ const aiEmail = IstemplateUser.templateContent;
+
+const rawEmail = `To: ${recipients[0].email}
+Subject: Hello from Drafton
+
+${aiEmail}`;
+    console.log(rawEmail);
+    const encodedEmail = Buffer.from(rawEmail).toString("base64url");
+    console.log(encodedEmail);
+     const gmail = google.gmail({
+    version: "v1",
+    auth: oauthClient,
+  });
+  const response = await gmail.users.messages.send({
+    userId: "me",
+    requestBody: {
+      raw: encodedEmail,
+    },
+  });
+  console.log(response.data);
+await prisma.recipient.update({
   where:{
-    id:id
+    id:recipients[0].id
+  },data:{
+    status:"SENT"
   }
 })
-if(!user){
-  return res.status(404).json({message:"User not found"})
-}
-const access_token = user.googleAccessToken
-const refresh_token =user.googleRefreshToken
-
-if(!access_token || !refresh_token){
-  return res.status(400).json({message:"Please connect the email first"})
-}
-
-OauthClient.setCredentials({
-  access_token:access_token,
-  refresh_token:refresh_token
-})
-
-console.log(recipients[0]);
-const aiEmail = IstemplateUser.templateContent
-const rawEmail = `To: ${recipients[0].email}
-${aiEmail}
-`
-console.log(rawEmail);
-const encodedEmail = Buffer.from(rawEmail).toString("base64url")
-console.log(encodedEmail);
-const data = await gmailservice(encodedEmail)
-console.log(data);
-return res.status(200).json({template:IstemplateUser})
-  } catch (error){
+    return res.status(200).json({ template: IstemplateUser });
+  } catch (error) {
     console.log(error);
-    
+
     res.status(500).json({ message: "Internal server error" });
   }
 });

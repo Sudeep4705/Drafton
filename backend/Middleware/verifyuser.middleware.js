@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken"
 const verifyUser = (req,res,next)=>{
     try{
             const token = req.cookies.token
+           console.log("JWT exists:", !!token);
+            
     if(!token){
         return res.status(400).json("Unauthorized access")
     }
