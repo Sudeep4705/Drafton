@@ -3,7 +3,6 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import verifyUser from "../Middleware/verifyuser.middleware.js";
 import { google } from "googleapis";
 import { generateEmail } from "../Utils/llm.js";
-import OauthClient from "../Utils/googleOauth.js";
 const router = express.Router();
 const prisma = new PrismaClient();
 router.post("/generate", verifyUser, async (req, res) => {
@@ -70,9 +69,9 @@ const oauthClient =  new google.auth.OAuth2(
 
 
 router.post("/send/:id", verifyUser, async (req, res) => {
+  let CurrRecipient;
   try {
-    console.log("im at send email");
-    
+    console.log("im at send email");  
     const id = req.user.id;
     const ApprovedTemplate = Number(req.params.id);
     if (!ApprovedTemplate) {
@@ -96,6 +95,8 @@ router.post("/send/:id", verifyUser, async (req, res) => {
     if (recipients.length === 0) {
       return res.status(404).json({ message: "Recipient not found" });
     }
+    CurrRecipient =recipients[0]
+
     const user = await prisma.user.findUnique({
       where: {
         id: id,
@@ -119,7 +120,7 @@ router.post("/send/:id", verifyUser, async (req, res) => {
     });
 
     console.log(recipients[0]);
- const aiEmail = IstemplateUser.templateContent;
+const aiEmail = IstemplateUser.templateContent;
 
 const rawEmail = `To: ${recipients[0].email}
 Subject: Hello from Drafton
@@ -132,25 +133,40 @@ ${aiEmail}`;
     version: "v1",
     auth: oauthClient,
   });
+  await prisma.sendHistory.create({
+  data:{
+    userId:id,
+    recipientId:CurrRecipient.id
+  }
+})
   const response = await gmail.users.messages.send({
     userId: "me",
     requestBody: {
       raw: encodedEmail,
     },
   });
-  console.log(response.data);
 await prisma.recipient.update({
   where:{
-    id:recipients[0].id
+    id:CurrRecipient.id
   },data:{
     status:"SENT"
   }
 })
+
     return res.status(200).json({ template: IstemplateUser });
   } catch (error) {
     console.log(error);
+    if(CurrRecipient){
+      await prisma.recipient.update({
+    where:{
+    id:CurrRecipient.id
+  },data:{
+    status:"FAILED"
+  }
+})
+    }
 
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 });
 

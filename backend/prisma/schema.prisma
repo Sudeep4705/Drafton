@@ -16,13 +16,14 @@ datasource db {
 
 model User{
   id  Int @id @default(autoincrement())
-  name  String @unique
+  name  String 
   email  String @unique
   password String 
   googleAccessToken String?
   googleRefreshToken  String?
   template Template[]
   recipient Recipient[]
+  sendHistory SendHistory[]
 }
 
 
@@ -51,6 +52,15 @@ model Recipient{
   status RecipientStatus @default(PENDING)
   userId Int
   user User @relation(fields: [userId],references: [id])
-
   @@unique([email,userId])
+  sendHistory SendHistory[]
+}
+
+model SendHistory{
+  id Int @id @default(autoincrement())
+  userId Int
+  recipientId Int
+  attemptedAt DateTime @default(now())
+  user User @relation(fields: [userId],references: [id])
+  recipient Recipient @relation(fields: [recipientId],references: [id])
 }

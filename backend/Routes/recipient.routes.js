@@ -167,10 +167,19 @@ router.post("/upload",verifyUser, upload.single("file"), async (req, res) => {
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName]
   const jsonSheets = xlsx.utils.sheet_to_json(worksheet);
-  const newRecipient = jsonSheets.map((recipient)=>{
+
+  const validRows = jsonSheets.filter((recipient)=>{
+    const email = recipient["Company Name"]
+    return (
+      typeof(email==="string" && 
+         /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+      )
+    )
+  })
+  const newRecipient = validRows.map((recipient)=>{
   const newobj = {name:recipient.Name,
     companyName:recipient["Company Name"],
-    email:recipient["Email Address"],
+    email:recipient["Email Address"].trim(),
     userid:userid
   }
    return newobj
