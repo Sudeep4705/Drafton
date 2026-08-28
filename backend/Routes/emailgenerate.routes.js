@@ -119,7 +119,7 @@ router.post("/send/:id", verifyUser, async (req, res) => {
     console.log(recipients[0]);
     const aiEmail = IstemplateUser.templateContent;
 
-    const rawEmail = `To: ${recipients[0].email}
+    const rawEmail = `To: ${CurrRecipient.email}
 Subject: Hello from Drafton
 
 ${aiEmail}`;
@@ -130,24 +130,27 @@ ${aiEmail}`;
       version: "v1",
       auth: oauthClient,
     });
-    await prisma.sendHistory.create({
-      data: {
-        userId: id,
-        recipientId: CurrRecipient.id,
-      },
-    });
+
     const response = await gmail.users.messages.send({
       userId: "me",
       requestBody: {
         raw: encodedEmail,
       },
     });
+
     await prisma.recipient.update({
       where: {
         id: CurrRecipient.id,
       },
       data: {
         status: "SENT",
+      },
+    });
+
+        await prisma.sendHistory.create({
+      data: {
+        userId: id,
+        recipientId: CurrRecipient.id,
       },
     });
 
