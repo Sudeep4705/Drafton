@@ -1,5 +1,5 @@
 import express from "express";
-import { Prisma, PrismaClient } from "@prisma/client";
+import {PrismaClient } from "@prisma/client";
 import verifyUser from "../Middleware/verifyuser.middleware.js";
 import upload from "../Middleware/uploads.middleware.js";
 import xlsx from "xlsx";

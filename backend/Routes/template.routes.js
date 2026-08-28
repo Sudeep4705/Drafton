@@ -1,6 +1,6 @@
 import express from "express";
 import userVerify from "../Middleware/verifyuser.middleware.js";
-import { Prisma, PrismaClient } from "@prisma/client";
+import {PrismaClient } from "@prisma/client";
 const router = express.Router();
 const prisma = new PrismaClient();
 
