@@ -61,17 +61,16 @@ Output only the email.
   }
 });
 
-const oauthClient =  new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
-)
-
+const oauthClient = new google.auth.OAuth2(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI,
+);
 
 router.post("/send/:id", verifyUser, async (req, res) => {
   let CurrRecipient;
   try {
-    console.log("im at send email");  
+    console.log("im at send email");
     const id = req.user.id;
     const ApprovedTemplate = Number(req.params.id);
     if (!ApprovedTemplate) {
@@ -95,8 +94,7 @@ router.post("/send/:id", verifyUser, async (req, res) => {
     if (recipients.length === 0) {
       return res.status(404).json({ message: "Recipient not found" });
     }
-    CurrRecipient =recipients[0]
-
+    CurrRecipient = recipients[0];
     const user = await prisma.user.findUnique({
       where: {
         id: id,
@@ -113,57 +111,58 @@ router.post("/send/:id", verifyUser, async (req, res) => {
         .status(400)
         .json({ message: "Please connect the email first" });
     }
-
     oauthClient.setCredentials({
       access_token: access_token,
       refresh_token: refresh_token,
     });
 
     console.log(recipients[0]);
-const aiEmail = IstemplateUser.templateContent;
+    const aiEmail = IstemplateUser.templateContent;
 
-const rawEmail = `To: ${recipients[0].email}
+    const rawEmail = `To: ${recipients[0].email}
 Subject: Hello from Drafton
 
 ${aiEmail}`;
     console.log(rawEmail);
     const encodedEmail = Buffer.from(rawEmail).toString("base64url");
     console.log(encodedEmail);
-     const gmail = google.gmail({
-    version: "v1",
-    auth: oauthClient,
-  });
-  await prisma.sendHistory.create({
-  data:{
-    userId:id,
-    recipientId:CurrRecipient.id
-  }
-})
-  const response = await gmail.users.messages.send({
-    userId: "me",
-    requestBody: {
-      raw: encodedEmail,
-    },
-  });
-await prisma.recipient.update({
-  where:{
-    id:CurrRecipient.id
-  },data:{
-    status:"SENT"
-  }
-})
+    const gmail = google.gmail({
+      version: "v1",
+      auth: oauthClient,
+    });
+    await prisma.sendHistory.create({
+      data: {
+        userId: id,
+        recipientId: CurrRecipient.id,
+      },
+    });
+    const response = await gmail.users.messages.send({
+      userId: "me",
+      requestBody: {
+        raw: encodedEmail,
+      },
+    });
+    await prisma.recipient.update({
+      where: {
+        id: CurrRecipient.id,
+      },
+      data: {
+        status: "SENT",
+      },
+    });
 
     return res.status(200).json({ template: IstemplateUser });
   } catch (error) {
     console.log(error);
-    if(CurrRecipient){
+    if (CurrRecipient) {
       await prisma.recipient.update({
-    where:{
-    id:CurrRecipient.id
-  },data:{
-    status:"FAILED"
-  }
-})
+        where: {
+          id: CurrRecipient.id,
+        },
+        data: {
+          status: "FAILED",
+        },
+      });
     }
 
     return res.status(500).json({ message: "Internal server error" });
