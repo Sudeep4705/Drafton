@@ -180,7 +180,7 @@ router.post("/upload",verifyUser, upload.single("file"), async (req, res) => {
   const newobj = {name:recipient.Name,
     companyName:recipient["Company Name"],
     email:recipient["Email Address"].trim(),
-    userid:userid
+    userId:userid
   }
    return newobj
   })
@@ -192,6 +192,8 @@ router.post("/upload",verifyUser, upload.single("file"), async (req, res) => {
   res.json({ message: "Recipient imported successfully",count:allRecipient.count});
   }
   catch(error){
+    console.log(error);
+    
     return res.status(500).json({ message: "Intenal server error" });
   }
 

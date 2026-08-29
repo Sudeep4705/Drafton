@@ -117,7 +117,7 @@ router.post("/logout", (req, res) => {
 
 // router.delete("/users/:id",async(req,res)=>{
 //     let {id} = req.params
-//     const updateddata  = await prisma.user.delete({
+//     const updateddata  = awai prisma.user.delete({
 //         where:{
 //             id:Number(id)
 //         }

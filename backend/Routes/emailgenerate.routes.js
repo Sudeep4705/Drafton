@@ -5,6 +5,7 @@ import { google } from "googleapis";
 import { generateEmail } from "../Utils/llm.js";
 const router = express.Router();
 const prisma = new PrismaClient();
+
 router.post("/generate", verifyUser, async (req, res) => {
   try {
     const userid = req.user.id;
@@ -94,6 +95,34 @@ router.post("/send/:id", verifyUser, async (req, res) => {
     if (recipients.length === 0) {
       return res.status(404).json({ message: "Recipient not found" });
     }
+// total count of senthistory which status is pending
+    const pendingRecipient = await prisma.recipient.count({
+      where:{
+        userId:id,
+        status:"PENDING"
+      }
+    })
+       console.log(pendingRecipient);
+
+      //  fetch the today sent history
+       const startOfToday = new Date()
+       startOfToday.setHours(0,0,0,0)
+
+       const startOfTommorrow = new Date(startOfToday)
+       startOfTommorrow.setDate(startOfTommorrow.getDate()+1)
+
+    const sentToday = await prisma.sendHistory.count({where:{
+      userId:id,
+      attemptedAt:{
+        gte:startOfToday,
+        lt:startOfTommorrow
+      }
+    }})
+
+    console.log(sentToday);
+    
+ 
+    
     CurrRecipient = recipients[0];
     const user = await prisma.user.findUnique({
       where: {
@@ -130,14 +159,12 @@ ${aiEmail}`;
       version: "v1",
       auth: oauthClient,
     });
-
     const response = await gmail.users.messages.send({
       userId: "me",
       requestBody: {
         raw: encodedEmail,
       },
     });
-
     await prisma.recipient.update({
       where: {
         id: CurrRecipient.id,
@@ -147,7 +174,7 @@ ${aiEmail}`;
       },
     });
 
-        await prisma.sendHistory.create({
+    await prisma.sendHistory.create({
       data: {
         userId: id,
         recipientId: CurrRecipient.id,
