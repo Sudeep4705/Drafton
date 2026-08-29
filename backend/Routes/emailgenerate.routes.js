@@ -119,7 +119,7 @@ router.post("/send/:id", verifyUser, async (req, res) => {
       }
     }})
 
-    console.log(sentToday);
+    console.log("today email",sentToday);
     
  
     
