@@ -95,34 +95,39 @@ router.post("/send/:id", verifyUser, async (req, res) => {
     if (recipients.length === 0) {
       return res.status(404).json({ message: "Recipient not found" });
     }
-// total count of senthistory which status is pending
+    // total count of senthistory which status is pending
     const pendingRecipient = await prisma.recipient.count({
-      where:{
-        userId:id,
-        status:"PENDING"
-      }
-    })
-       console.log(pendingRecipient);
+      where: {
+        userId: id,
+        status: "PENDING",
+      },
+    });
+    console.log(pendingRecipient);
 
-      //  fetch the today sent history
-       const startOfToday = new Date()
-       startOfToday.setHours(0,0,0,0)
+    //  fetch the today sent history
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
 
-       const startOfTommorrow = new Date(startOfToday)
-       startOfTommorrow.setDate(startOfTommorrow.getDate()+1)
+    const startOfTommorrow = new Date(startOfToday);
+    startOfTommorrow.setDate(startOfTommorrow.getDate() + 1);
 
-    const sentToday = await prisma.sendHistory.count({where:{
-      userId:id,
-      attemptedAt:{
-        gte:startOfToday,
-        lt:startOfTommorrow
-      }
-    }})
+    const sentToday = await prisma.sendHistory.count({
+      where: {
+        userId: id,
+        attemptedAt: {
+          gte: startOfToday,
+          lt: startOfTommorrow,
+        },
+      },
+    });
+    const remaining = 30 - sentToday;
+    console.log(remaining);
 
-    console.log("today email",sentToday);
-    
- 
-    
+    if (remaining <= 0) {
+  return res.status(429).json({
+    message: "Daily email limit reached"
+  });
+}
     CurrRecipient = recipients[0];
     const user = await prisma.user.findUnique({
       where: {
