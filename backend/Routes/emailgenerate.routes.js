@@ -99,7 +99,11 @@ router.post("/send/:id", verifyUser, async (req, res) => {
         userId: id,
       },
     });
+    console.log("total recipients:", recipients);
+
     if (recipients.length === 0) {
+      console.log("NO recipient there");
+
       return res.status(404).json({ message: "Recipient not found" });
     }
 
@@ -130,22 +134,35 @@ router.post("/send/:id", verifyUser, async (req, res) => {
       });
     }
 
-     const access_token = user.googleAccessToken;
-        const refresh_token = user.googleRefreshToken;
+    const access_token = user.googleAccessToken;
+    const refresh_token = user.googleRefreshToken;
 
-        if (!access_token || !refresh_token) {
-          return res
-            .status(400)
-            .json({ message: "Please connect the email first" });
-        }
-        oauthClient.setCredentials({
-          access_token: access_token,
-          refresh_token: refresh_token,
-        });
-
+    if (!access_token || !refresh_token) {
+      return res
+        .status(400)
+        .json({ message: "Please connect the email first" });
+    }
+    oauthClient.setCredentials({
+      access_token: access_token,
+      refresh_token: refresh_token,
+    });
     const numberToSend = Math.min(remaining, recipients.length);
-    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     // for loop to send the email to one by one recipient
+
+    if (user.isSending) {
+      return res
+        .status(409)
+        .json({ message: "Email sending is already in progress" });
+    }
+    await prisma.user.update({
+      where: {
+        id: id,
+      },
+      data: {
+        isSending: true,
+      },
+    });
     for (let i = 0; i < numberToSend; i++) {
       try {
         CurrRecipient = recipients[i];
@@ -183,7 +200,7 @@ ${aiEmail}`;
             recipientId: CurrRecipient.id,
           },
         });
-        await delay(20000)
+        await delay(20000);
       } catch (error) {
         console.log(error);
         if (CurrRecipient) {
@@ -197,6 +214,15 @@ ${aiEmail}`;
           });
         }
         continue;
+      } finally {
+        await prisma.user.update({
+          where: {
+            id: id,
+          },
+          data: {
+            isSending: false,
+          },
+        });
       }
     }
     return res.status(200).json({ template: IstemplateUser });

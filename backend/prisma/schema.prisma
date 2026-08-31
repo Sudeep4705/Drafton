@@ -21,6 +21,7 @@ model User{
   password String 
   googleAccessToken String?
   googleRefreshToken  String?
+  isSending Boolean @default(false)
   template Template[]
   recipient Recipient[]
   sendHistory SendHistory[]
