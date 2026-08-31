@@ -71,9 +71,16 @@ const oauthClient = new google.auth.OAuth2(
 router.post("/send/:id", verifyUser, async (req, res) => {
   let CurrRecipient;
   try {
-    console.log("im at send email");
     const id = req.user.id;
     const ApprovedTemplate = Number(req.params.id);
+    const user = await prisma.user.findUnique({
+      where: {
+        id: id,
+      },
+    });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
     if (!ApprovedTemplate) {
       return res.status(404).json({ message: "Template Not found" });
     }
@@ -95,14 +102,8 @@ router.post("/send/:id", verifyUser, async (req, res) => {
     if (recipients.length === 0) {
       return res.status(404).json({ message: "Recipient not found" });
     }
-    // total count of senthistory which status is pending
-    const pendingRecipient = await prisma.recipient.count({
-      where: {
-        userId: id,
-        status: "PENDING",
-      },
-    });
-    console.log(pendingRecipient);
+
+    console.log("recipient length", recipients.length);
 
     //  fetch the today sent history
     const startOfToday = new Date();
@@ -121,71 +122,83 @@ router.post("/send/:id", verifyUser, async (req, res) => {
       },
     });
     const remaining = 30 - sentToday;
-    console.log(remaining);
+    console.log("this is the remaining", remaining);
 
     if (remaining <= 0) {
-  return res.status(429).json({
-    message: "Daily email limit reached"
-  });
-}
-    CurrRecipient = recipients[0];
-    const user = await prisma.user.findUnique({
-      where: {
-        id: id,
-      },
-    });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(429).json({
+        message: "Daily email limit reached",
+      });
     }
-    const access_token = user.googleAccessToken;
-    const refresh_token = user.googleRefreshToken;
 
-    if (!access_token || !refresh_token) {
-      return res
-        .status(400)
-        .json({ message: "Please connect the email first" });
-    }
-    oauthClient.setCredentials({
-      access_token: access_token,
-      refresh_token: refresh_token,
-    });
+     const access_token = user.googleAccessToken;
+        const refresh_token = user.googleRefreshToken;
 
-    console.log(recipients[0]);
-    const aiEmail = IstemplateUser.templateContent;
+        if (!access_token || !refresh_token) {
+          return res
+            .status(400)
+            .json({ message: "Please connect the email first" });
+        }
+        oauthClient.setCredentials({
+          access_token: access_token,
+          refresh_token: refresh_token,
+        });
 
-    const rawEmail = `To: ${CurrRecipient.email}
+    const numberToSend = Math.min(remaining, recipients.length);
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    // for loop to send the email to one by one recipient
+    for (let i = 0; i < numberToSend; i++) {
+      try {
+        CurrRecipient = recipients[i];
+        const aiEmail = IstemplateUser.templateContent;
+
+        const rawEmail = `To: ${CurrRecipient.email}
 Subject: Hello from Drafton
 
 ${aiEmail}`;
-    console.log(rawEmail);
-    const encodedEmail = Buffer.from(rawEmail).toString("base64url");
-    console.log(encodedEmail);
-    const gmail = google.gmail({
-      version: "v1",
-      auth: oauthClient,
-    });
-    const response = await gmail.users.messages.send({
-      userId: "me",
-      requestBody: {
-        raw: encodedEmail,
-      },
-    });
-    await prisma.recipient.update({
-      where: {
-        id: CurrRecipient.id,
-      },
-      data: {
-        status: "SENT",
-      },
-    });
+        console.log(rawEmail);
+        const encodedEmail = Buffer.from(rawEmail).toString("base64url");
+        console.log(encodedEmail);
+        const gmail = google.gmail({
+          version: "v1",
+          auth: oauthClient,
+        });
+        const response = await gmail.users.messages.send({
+          userId: "me",
+          requestBody: {
+            raw: encodedEmail,
+          },
+        });
+        await prisma.recipient.update({
+          where: {
+            id: CurrRecipient.id,
+          },
+          data: {
+            status: "SENT",
+          },
+        });
 
-    await prisma.sendHistory.create({
-      data: {
-        userId: id,
-        recipientId: CurrRecipient.id,
-      },
-    });
-
+        await prisma.sendHistory.create({
+          data: {
+            userId: id,
+            recipientId: CurrRecipient.id,
+          },
+        });
+        await delay(20000)
+      } catch (error) {
+        console.log(error);
+        if (CurrRecipient) {
+          await prisma.recipient.update({
+            where: {
+              id: CurrRecipient.id,
+            },
+            data: {
+              status: "FAILED",
+            },
+          });
+        }
+        continue;
+      }
+    }
     return res.status(200).json({ template: IstemplateUser });
   } catch (error) {
     console.log(error);
@@ -199,7 +212,6 @@ ${aiEmail}`;
         },
       });
     }
-
     return res.status(500).json({ message: "Internal server error" });
   }
 });
